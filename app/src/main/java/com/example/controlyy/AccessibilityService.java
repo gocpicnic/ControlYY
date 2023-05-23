@@ -2,7 +2,9 @@ package com.example.controlyy;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
+import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.icu.text.SimpleDateFormat;
@@ -14,14 +16,60 @@ import android.view.accessibility.AccessibilityNodeInfo;
 import android.webkit.WebView;
 
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 
 public class AccessibilityService extends android.accessibilityservice.AccessibilityService {
     private String xueXiName = "cn.xuexi.android";
     private String ContrlyyName = "com.example.controlyy";
 
     private int progress = 0; // 自动化进度
+
+    private SharedPreferences sharedPref;
+    private String todaydef = "2023-05-20";
+    private String today;
+
+    private int videoNumDef = -1;
+    private int videoNum;
+
+
+    private int articleNumDef = -1;
+
+    private int articleNum;
+
+
+    @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+
+        Date date = new Date();
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
+        String todaydate = dateFormat.format(date);
+
+        sharedPref = MyApplication.getContext().getSharedPreferences("data", Context.MODE_PRIVATE);
+        today = sharedPref.getString("today", todaydef);
+        videoNum = sharedPref.getInt("videoNum", videoNumDef);
+        articleNum = sharedPref.getInt("articleNum", articleNumDef);
+
+
+        //当初次运行时，没有data.xml时，创建这个文件并写入对应的数值
+        //或者data.xml里的数据不是当天数据时，重新写入默认的数据
+        if (!(today.equals(todaydate))) {
+
+            today = todaydate;
+            videoNum = 0;
+            articleNum = 0;
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putString("today", today);
+            editor.putInt("videoNum", videoNum);
+            editor.putInt("articleNum", articleNum);
+            editor.commit();
+        }
+
+
+    }
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -33,15 +81,16 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
             Log.d("packageName", packageName);
 
             Intent xuexi = getPackageManager().getLaunchIntentForPackage(xueXiName);
-            if(xuexi != null) {
+            if (xuexi != null) {
                 try {
                     xuexi.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(xuexi);
-                } catch (Exception e){}
+                } catch (Exception e) {
+                }
             }
         }
 
-        if (!packageName.equals(xueXiName) ) {
+        if (!packageName.equals(xueXiName)) {
             return;
         }
         int eventType = event.getEventType();
@@ -60,14 +109,14 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
 
     private void controlYY() {
         // progress自动化进度，防止顺序出错
-        sleep(5,3);
+        sleep(5, 3);
         if (progress == 0) {
             AccessibilityNodeInfo nodeOne = findViewByText("百灵");
             if (nodeOne != null) {
                 performViewClick(nodeOne);
-                sleep(1,2);
+                sleep(1, 2);
                 performViewClick(nodeOne);
-                sleep(1,2);
+                sleep(1, 2);
                 progress++;
             }
         }
@@ -91,19 +140,23 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
             // 有些View是不能点击，这时候可以用手势来处理
             gesture(moveToX, moveToY, lineToX, lineToY, 100L, 400L);
             progress++;
-            sleep(3,3);
+            sleep(3, 3);
         }
 
         //step3:看10个视频
         if (progress == 2) {
-            DownSnip(10);
+            Log.d("packageName", String.valueOf(videoNum));
+
+            if (videoNum < 7) {
+                DownSnip(7 - videoNum);
+            }
             progress++;
         }
 
         //step4:回到主页
         if (progress == 3) {
             gesture(800, 800, 1000, 800, 0, 500);
-            sleep(1,3);
+            sleep(1, 3);
             progress++;
         }
 
@@ -114,9 +167,9 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
 //            nodeAdd.getText()
             if (nodeAdd != null) {
                 performViewClick(nodeAdd);
-                sleep(1,3);
+                sleep(1, 3);
                 performViewClick(nodeAdd);
-                sleep(1,3);
+                sleep(1, 3);
                 progress++;
 
             }
@@ -126,19 +179,27 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
             Date date = new Date();
             SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd");
             String sim = dateFormat.format(date);
-            for (int i = 1; i <= 7; i++) {
+
+            for (int i = 0; i <= 6; i++) {
                 List<AccessibilityNodeInfo> nodeInfoList = findViewsByText(sim, true);
                 if (nodeInfoList != null) {
-                    clicknodeInfoList(nodeInfoList);
-                    sleep(1,3);
+                    if (i >= articleNum) {
+                        clicknodeInfoList(nodeInfoList);
+                        articleNum++;
+                        SharedPreferences.Editor editor = sharedPref.edit();
+                        editor.putInt("articleNum", articleNum);
+                        editor.commit();
+                    }
+                    sleep(1, 3);
                     gesture(800, 2000, 800, 500, 0, 500);
-                    sleep(1,3);
+                    sleep(1, 3);
                 } else {
                     gesture(800, 2000, 800, 500, 0, 500);
-                    sleep(1,3);
+                    sleep(1, 3);
                 }
 
             }
+
             progress++;
         }
 
@@ -151,6 +212,7 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
         }
 
     }
+
     public List<AccessibilityNodeInfo> findViewsByText(String text, boolean clickable) {
         AccessibilityNodeInfo accessibilityNodeInfo = getRootInActiveWindow();
         if (accessibilityNodeInfo == null) {
@@ -166,16 +228,16 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
     public void clicknodeInfoList(List<AccessibilityNodeInfo> nodeInfoList) {
         for (AccessibilityNodeInfo nodeInfo : nodeInfoList) {
             performViewClick(nodeInfo);
-            sleep(2,3);
+            sleep(2, 3);
             for (int i = 1; i <= 3; i++) {
-                sleep(6,3);
+                sleep(6, 3);
                 gesture(800, 800, 800, 700, 0, 500);
-                sleep(6,3);
+                sleep(6, 3);
                 gesture(800, 800, 800, 900, 0, 500);
-                sleep(7,3);
+                sleep(7, 3);
             }
             gesture(800, 800, 1000, 800, 0, 500);
-            sleep(1,3);
+            sleep(1, 3);
         }
     }
 
@@ -188,7 +250,11 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
 
             // 有些View是不能点击，这时候可以用手势来处理
             gesture(moveToX, moveToY, lineToX, lineToY, 0, 500);
-            sleep(60,10);
+            sleep(60, 10);
+            videoNum++;
+            SharedPreferences.Editor editor = sharedPref.edit();
+            editor.putInt("videoNum", videoNum);
+            editor.commit();
         }
 
     }
@@ -267,11 +333,11 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
         }
     }
 
-    protected void sleep(long s,int bound) {
+    protected void sleep(long s, int bound) {
         Random random = new Random();
         long rd = random.nextInt(bound);
         try {
-            Thread.sleep((s+rd) * 1000);
+            Thread.sleep((s + rd) * 1000);
         } catch (Exception e) {
             e.printStackTrace();
         }

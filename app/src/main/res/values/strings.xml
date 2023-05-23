@@ -1,5 +1,7 @@
 <resources>
     <string name="app_name">ControlYY</string>
     <string name="xuexi_name">cn.xuexi.android</string>
+    <string name="com.example.controlyy.gg">cn.xuexi.android</string>
+
 
 </resources>
