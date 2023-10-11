@@ -2,24 +2,36 @@ package com.example.controlyy;
 
 import android.accessibilityservice.AccessibilityServiceInfo;
 import android.accessibilityservice.GestureDescription;
+import android.app.Activity;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
 import android.graphics.Path;
 import android.graphics.Rect;
 import android.icu.text.SimpleDateFormat;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Base64;
 import android.util.Log;
+import android.view.Display;
+import android.view.View;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.webkit.WebView;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
+
+import java.io.ByteArrayOutputStream;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 import java.util.Set;
+import java.util.concurrent.Executor;
 
 public class AccessibilityService extends android.accessibilityservice.AccessibilityService {
     private String xueXiName = "cn.xuexi.android";
@@ -40,6 +52,8 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
     private int articleNum;
 
 
+
+
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
@@ -54,6 +68,7 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
         articleNum = sharedPref.getInt("articleNum", articleNumDef);
 
 
+
         //当初次运行时，没有data.xml时，创建这个文件并写入对应的数值
         //或者data.xml里的数据不是当天数据时，重新写入默认的数据
         if (!(today.equals(todaydate))) {
@@ -65,11 +80,19 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
             editor.putString("today", today);
             editor.putInt("videoNum", videoNum);
             editor.putInt("articleNum", articleNum);
+
             editor.commit();
         }
 
 
     }
+
+    @Override
+    public void takeScreenshot(int displayId, @NonNull Executor executor, @NonNull TakeScreenshotCallback callback) {
+        super.takeScreenshot(displayId, executor, callback);
+    }
+
+
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
@@ -117,8 +140,40 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
                 sleep(1, 2);
                 performViewClick(nodeOne);
                 sleep(1, 2);
+
+
+//                performGlobalAction(AccessibilityService.GLOBAL_ACTION_TAKE_SCREENSHOT);
+//
+//                takeScreenshot(Display.DEFAULT_DISPLAY,
+//                        getApplicationContext().getMainExecutor(), new TakeScreenshotCallback() {
+//                            @RequiresApi(api = Build.VERSION_CODES.R)
+//                            @Override
+//                            public void onSuccess(@NonNull ScreenshotResult screenshotResult) {
+//
+//                                Log.i("ScreenShotResult","onSuccess");
+//                                Bitmap bitmap = Bitmap.wrapHardwareBuffer(screenshotResult.getHardwareBuffer(),screenshotResult.getColorSpace());
+//                                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+//                                bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+//                                byte[] byteArray = byteArrayOutputStream .toByteArray();
+//                                String encoded = Base64.encodeToString(byteArray, Base64.DEFAULT);
+//                                Log.d("packageName", encoded);
+//
+//
+////                                AccessibilityUtils.saveImage(bitmap,getApplicationContext(),"WhatsappIntegration");
+//
+//                            }
+
+//                            @Override
+//                            public void onFailure(int i) {
+//
+//                                Log.i("ScreenShotResult","onFailure code is "+ i);
+//
+//                            }
+//                        });
+
                 progress++;
             }
+
         }
 
         // 步骤2：点击最上面的一个视频
@@ -204,6 +259,58 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
         }
 
         if (progress == 6) {
+            //完成本地频道得分
+            AccessibilityNodeInfo nodeOne = findViewByText("主题教育");
+
+            if (nodeOne != null) {
+                performViewClick(nodeOne);
+                sleep(1, 3);
+            }
+
+            AccessibilityNodeInfo nodeOne1 = findViewByText("亮点");
+            if (nodeOne1 != null) {
+                performViewClick(nodeOne1);
+                sleep(1, 3);
+            }
+
+            AccessibilityNodeInfo nodeOne2 = findViewByText("江苏");
+            if (nodeOne2 != null) {
+                performViewClick(nodeOne2);
+                sleep(1, 3);
+            }
+
+            AccessibilityNodeInfo nodeOne3 = findViewByText("江苏学习平台");
+            if (nodeOne3 != null) {
+                performViewClick(nodeOne3);
+                sleep(1, 3);
+            }
+
+            Date date1 = new Date();
+            SimpleDateFormat dateFormat1 = new SimpleDateFormat("yyyy-MM-dd");
+            String sim1 = dateFormat1.format(date1);
+
+            for (int i = 0; i <= 1; i++) {
+                List<AccessibilityNodeInfo> nodeInfoList = findViewsByText(sim1, true);
+                if (nodeInfoList != null) {
+                    clicknodeInfoList(nodeInfoList);
+
+
+                    sleep(1, 3);
+                    gesture(800, 2000, 800, 500, 0, 500);
+                    sleep(1, 3);
+                } else {
+                    gesture(800, 2000, 800, 500, 0, 500);
+                    sleep(1, 3);
+                }
+
+            }
+
+            progress++;
+        }
+
+
+
+        if (progress == 7) {
             AccessibilityNodeInfo nodeAdd = findViewByID("cn.xuexi.android:id/comm_head_xuexi_score");
             if (nodeAdd != null) {
                 performViewClick(nodeAdd);
@@ -227,17 +334,24 @@ public class AccessibilityService extends android.accessibilityservice.Accessibi
 
     public void clicknodeInfoList(List<AccessibilityNodeInfo> nodeInfoList) {
         for (AccessibilityNodeInfo nodeInfo : nodeInfoList) {
-            performViewClick(nodeInfo);
-            sleep(2, 3);
-            for (int i = 1; i <= 3; i++) {
-                sleep(6, 3);
-                gesture(800, 800, 800, 700, 0, 500);
-                sleep(6, 3);
-                gesture(800, 800, 800, 900, 0, 500);
-                sleep(7, 3);
+//            nodeInfo.getText();
+            String articleTitle = (String) nodeInfo.getParent().getParent().getParent().getChild(0).getText();
+//            int flag = -2;
+            int flagBook = articleTitle.indexOf("语版|");//当出现书架类文章直接跳过
+
+            if (flagBook == -1) {
+                performViewClick(nodeInfo);
+                sleep(2, 3);
+                for (int i = 1; i <= 3; i++) {
+                    sleep(6, 3);
+                    gesture(800, 800, 800, 700, 0, 500);
+                    sleep(6, 3);
+                    gesture(800, 800, 800, 900, 0, 500);
+                    sleep(7, 3);
+                }
+                gesture(800, 800, 1000, 800, 0, 500);
+                sleep(1, 3);
             }
-            gesture(800, 800, 1000, 800, 0, 500);
-            sleep(1, 3);
         }
     }
 
